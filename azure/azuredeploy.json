@@ -18,7 +18,8 @@
   "functions": [],
   "variables": {
     "appname": "[replace(resourceGroup().name,' ','')]",
-    "storageAccountId": "[resourceId('Microsoft.Storage/storageAccounts', variables('appname'))]"
+    "storageAccountId": "[resourceId('Microsoft.Storage/storageAccounts', variables('appname'))]",
+    "containerRegistryId": "[resourceId('Microsoft.ContainerRegistry/registries', variables('appname'))]"
   },
   "resources": [
     {
@@ -93,6 +94,7 @@
         "[resourceId('Microsoft.Web/serverfarms', variables('appname'))]",
         "[resourceId('Microsoft.DBforMySQL/servers', variables('appname'))]",
         "[resourceId('Microsoft.Storage/storageAccounts', variables('appname'))]",
+        "[resourceId('Microsoft.ContainerRegistry/registries', variables('appname'))]",
         "[resourceId('Microsoft.Storage/storageAccounts/fileServices/shares', variables('appname'), 'default','public')]"
       ],
       "properties": {
@@ -130,7 +132,15 @@
             },
             {
               "name": "DOCKER_REGISTRY_SERVER_URL",
-              "value": "https://index.docker.io/v1"
+              "value": "[concat('https://',variables('appname') ,'.azurecr.io')]"
+            },
+            {
+              "name": "DOCKER_REGISTRY_SERVER_USERNAME",
+              "value": "[variables('appname')]"
+            },
+            {
+              "name": "DOCKER_REGISTRY_SERVER_PASSWORD",
+              "value": "[listCredentials(variables('containerRegistryId'),'2019-05-01').passwords[0].value]"
             },
             {
               "name": "NODE_ENV",
@@ -200,6 +210,21 @@
         "accessTier": "TransactionOptimized",
         "shareQuota": 5120,
         "enabledProtocols": "SMB"
+      }
+    },
+    {
+      "type": "Microsoft.ContainerRegistry/registries",
+      "apiVersion": "2019-05-01",
+      "name": "[variables('appname')]",
+      "location": "[resourceGroup().location]",
+      "sku": {
+        "name": "Basic",
+        "tier": "Basic"
+      },
+      "properties": {
+        "adminUserEnabled": true,
+        "publicNetworkAccess": "Enabled",
+        "networkRuleBypassOptions": "AzureServices"
       }
     }
   ],
