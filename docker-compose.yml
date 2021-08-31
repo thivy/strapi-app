@@ -1,0 +1,8 @@
+version: "3"
+services:
+  strapi:
+    image: thivyakanth/strapiapp:3ddb3108285b4e56e27e5b884b424984b6e2042c
+    volumes:
+      - public:/app/public/uploads
+    ports:
+      - "1337:1337"

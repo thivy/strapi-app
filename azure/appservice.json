@@ -1,0 +1,92 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {},
+  "functions": [],
+  "variables": {
+    "appname": "[replace(resourceGroup().name,' ','')]"
+  },
+  "resources": [
+    {
+      "name": "[variables('appname')]",
+      "type": "Microsoft.Web/serverfarms",
+      "apiVersion": "2020-12-01",
+      "location": "[resourceGroup().location]",
+      "sku": {
+        "name": "B1",
+        "tier": "Basic",
+        "size": "B1",
+        "family": "B",
+        "capacity": 1
+      },
+      "kind": "linux",
+      "properties": {
+        "name": "[variables('appname')]",
+        "reserved": true
+      }
+    },
+
+    {
+      "name": "[variables('appname')]",
+      "type": "Microsoft.Web/sites",
+      "apiVersion": "2020-12-01",
+      "kind": "app,linux,container",
+      "location": "[resourceGroup().location]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/serverfarms', variables('appname'))]"
+      ],
+      "properties": {
+        "name": "[variables('appname')]",
+
+        "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('appname'))]",
+        "siteConfig": {
+          "alwaysOn": true,
+          "appSettings": [
+            {
+              "name": "DATABASE_CLIENT",
+              "value": "mysql"
+            },
+            {
+              "name": "DATABASE_HOST",
+              "value": "strapi1.mysql.database.azure.com"
+            },
+            {
+              "name": "DATABASE_NAME",
+              "value": "strapi1db"
+            },
+            {
+              "name": "DATABASE_PASSWORD",
+              "value": "Database2021!@"
+            },
+            {
+              "name": "DATABASE_PORT",
+              "value": "3306"
+            },
+            {
+              "name": "DATABASE_USERNAME",
+              "value": "adminUsername@strapi1"
+            },
+            {
+              "name": "WEBSITES_ENABLE_APP_SERVICE_STORAGE",
+              "value": "false"
+            },
+            {
+              "name": "DOCKER_REGISTRY_SERVER_URL",
+              "value": "https://index.docker.io/v1"
+            },
+            {
+              "name": "NODE_ENV",
+              "value": "development"
+            },
+            {
+              "name": "WEBSITE_HTTPLOGGING_RETENTION_DAYS",
+              "value": "1"
+            }
+          ],
+          "linuxFxVersion": "COMPOSE|"
+        }
+      }
+    }
+  ],
+  "outputs": {}
+}

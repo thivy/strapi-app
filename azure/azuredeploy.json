@@ -1,0 +1,194 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "Database login": {
+      "type": "string",
+      "defaultValue": "adminUsername"
+    },
+    "Database password": {
+      "type": "string",
+      "defaultValue": "Database2021!@"
+    },
+    "Database tier": {
+      "type": "string",
+      "defaultValue": "Basic"
+    }
+  },
+  "functions": [],
+  "variables": {
+    "appname": "[replace(resourceGroup().name,' ','')]",
+    "database-name": "[concat(variables('appname'), '/',variables('appname'),'db')]",
+    "storageAccountId": "[resourceId('Microsoft.Storage/storageAccounts', variables('appname'))]"
+  },
+  "resources": [
+    {
+      "name": "[variables('appname')]",
+      "type": "Microsoft.DBforMySQL/servers",
+      "apiVersion": "2017-12-01",
+      "location": "[resourceGroup().location]",
+      "properties": {
+        "administratorLogin": "[parameters('Database login')]",
+        "administratorLoginPassword": "[parameters('Database password')]",
+        "createMode": "Default",
+        "publicNetworkAccess": "Enabled",
+        "sslEnforcement": "Disabled"
+      },
+      "sku": {
+        "name": "B_Gen5_1",
+        "tier": "[parameters('Database tier')]",
+        "family": "Gen5",
+        "capacity": 1
+      }
+    },
+    {
+      "type": "Microsoft.DBforMySQL/servers/databases",
+      "apiVersion": "2017-12-01",
+      "name": "[variables('database-name')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.DBforMySQL/servers', variables('appname'))]"
+      ],
+      "properties": {
+        "charset": "utf8mb4",
+        "collation": "utf8mb4_general_ci"
+      }
+    },
+    {
+      "name": "[variables('appname')]",
+      "type": "Microsoft.Web/serverfarms",
+      "apiVersion": "2020-12-01",
+      "location": "[resourceGroup().location]",
+
+      "sku": {
+        "name": "B1",
+        "tier": "Basic",
+        "size": "B1",
+        "family": "B",
+        "capacity": 1
+      },
+      "kind": "linux",
+      "properties": {
+        "name": "[variables('appname')]",
+        "reserved": true
+      }
+    },
+    {
+      "name": "[variables('appname')]",
+      "type": "Microsoft.Web/sites",
+      "apiVersion": "2020-12-01",
+      "kind": "app,linux,container",
+      "location": "[resourceGroup().location]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/serverfarms', variables('appname'))]",
+        "[resourceId('Microsoft.DBforMySQL/servers', variables('appname'))]",
+        "[resourceId('Microsoft.Storage/storageAccounts', variables('appname'))]",
+        "[resourceId('Microsoft.Storage/storageAccounts/fileServices/shares', variables('appname'), 'default','storage')]"
+      ],
+      "properties": {
+        "name": "[variables('appname')]",
+        "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('appname'))]",
+        "siteConfig": {
+          "appSettings": [
+            {
+              "name": "DATABASE_CLIENT",
+              "value": "mysql"
+            },
+            {
+              "name": "DATABASE_HOST",
+              "value": "[concat(variables('appname'),'.mysql.database.azure.com')]"
+            },
+            {
+              "name": "DATABASE_NAME",
+              "value": "[variables('database-name')]"
+            },
+            {
+              "name": "DATABASE_PASSWORD",
+              "value": "[parameters('Database password')]"
+            },
+            {
+              "name": "DATABASE_USERNAME",
+              "value": "[concat(parameters('Database login'),'@', variables('appname'))]"
+            },
+            {
+              "name": "DATABASE_PORT",
+              "value": "3306"
+            },
+            {
+              "name": "WEBSITES_ENABLE_APP_SERVICE_STORAGE",
+              "value": "true"
+            },
+            {
+              "name": "DOCKER_REGISTRY_SERVER_URL",
+              "value": "https://index.docker.io/v1"
+            },
+            {
+              "name": "NODE_ENV",
+              "value": "development"
+            }
+          ],
+          "linuxFxVersion": "COMPOSE|"
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Web/sites/config",
+      "apiVersion": "2020-12-01",
+      "name": "[concat(variables('appname'), '/web')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/sites', variables('appname'))]"
+      ],
+      "properties": {
+        "azureStorageAccounts": {
+          "public": {
+            "type": "AzureFiles",
+            "accountName": "[variables('appname')]",
+            "shareName": "public",
+            "accessKey": "[listKeys(variables('storageAccountId'), '2021-04-01').keys[0].value]",
+            "mountPath": "/app/public/upload"
+          }
+        }
+      }
+    },
+    {
+      "name": "[variables('appname')]",
+      "type": "Microsoft.Storage/storageAccounts",
+      "apiVersion": "2021-04-01",
+      "tags": {
+        "displayName": "storageaccount"
+      },
+      "location": "[resourceGroup().location]",
+      "kind": "StorageV2",
+      "sku": {
+        "name": "Standard_RAGRS",
+        "tier": "Standard"
+      }
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts/fileServices",
+      "apiVersion": "2021-04-01",
+      "name": "[concat(variables('appname'), '/default')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts', variables('appname'))]"
+      ],
+      "sku": {
+        "name": "Standard_RAGRS",
+        "tier": "Standard"
+      }
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts/fileServices/shares",
+      "apiVersion": "2021-04-01",
+      "name": "[concat(variables('appname'), '/default/storage')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts', variables('appname'))]",
+        "[resourceId('Microsoft.Storage/storageAccounts/fileServices', variables('appname'), 'default')]"
+      ],
+      "properties": {
+        "accessTier": "TransactionOptimized",
+        "shareQuota": 5120,
+        "enabledProtocols": "SMB"
+      }
+    }
+  ],
+  "outputs": {}
+}
