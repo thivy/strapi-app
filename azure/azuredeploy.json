@@ -18,7 +18,6 @@
   "functions": [],
   "variables": {
     "appname": "[replace(resourceGroup().name,' ','')]",
-    "database-name": "[concat(variables('appname'), '/',variables('appname'),'db')]",
     "storageAccountId": "[resourceId('Microsoft.Storage/storageAccounts', variables('appname'))]"
   },
   "resources": [
@@ -44,13 +43,25 @@
     {
       "type": "Microsoft.DBforMySQL/servers/databases",
       "apiVersion": "2017-12-01",
-      "name": "[variables('database-name')]",
+      "name": "[concat(variables('appname'), '/',variables('appname'))]",
       "dependsOn": [
         "[resourceId('Microsoft.DBforMySQL/servers', variables('appname'))]"
       ],
       "properties": {
         "charset": "utf8mb4",
         "collation": "utf8mb4_general_ci"
+      }
+    },
+    {
+      "type": "Microsoft.DBforMySQL/servers/firewallRules",
+      "apiVersion": "2017-12-01",
+      "name": "[concat(variables('appname'), '/AllowAllWindowsAzureIps')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.DBforMySQL/servers', variables('appname'))]"
+      ],
+      "properties": {
+        "startIpAddress": "0.0.0.0",
+        "endIpAddress": "0.0.0.0"
       }
     },
     {
@@ -82,7 +93,7 @@
         "[resourceId('Microsoft.Web/serverfarms', variables('appname'))]",
         "[resourceId('Microsoft.DBforMySQL/servers', variables('appname'))]",
         "[resourceId('Microsoft.Storage/storageAccounts', variables('appname'))]",
-        "[resourceId('Microsoft.Storage/storageAccounts/fileServices/shares', variables('appname'), 'default','storage')]"
+        "[resourceId('Microsoft.Storage/storageAccounts/fileServices/shares', variables('appname'), 'default','public')]"
       ],
       "properties": {
         "name": "[variables('appname')]",
@@ -99,7 +110,7 @@
             },
             {
               "name": "DATABASE_NAME",
-              "value": "[variables('database-name')]"
+              "value": "[variables('appname')]"
             },
             {
               "name": "DATABASE_PASSWORD",
@@ -138,6 +149,8 @@
         "[resourceId('Microsoft.Web/sites', variables('appname'))]"
       ],
       "properties": {
+        "httpLoggingEnabled": true,
+        "logsDirectorySizeLimit": 35,
         "azureStorageAccounts": {
           "public": {
             "type": "AzureFiles",
@@ -178,7 +191,7 @@
     {
       "type": "Microsoft.Storage/storageAccounts/fileServices/shares",
       "apiVersion": "2021-04-01",
-      "name": "[concat(variables('appname'), '/default/storage')]",
+      "name": "[concat(variables('appname'), '/default/public')]",
       "dependsOn": [
         "[resourceId('Microsoft.Storage/storageAccounts', variables('appname'))]",
         "[resourceId('Microsoft.Storage/storageAccounts/fileServices', variables('appname'), 'default')]"
